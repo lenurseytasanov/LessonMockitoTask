@@ -107,4 +107,17 @@ public class ShoppingServiceTest {
                 e.getMessage()
         );
     }
+
+    /**
+     * Проверям, что нельзя добавить отрицательное количество товара
+     */
+    @Test
+    public void buyCartWithIncorrectProductTest() {
+        Product product = new Product("product", 5);
+
+        cart.add(product, -10);
+
+        Exception e = assertThrows(Exception.class, () -> shoppingService.buy(cart));
+        assertEquals("Неверное количество товара", e.getMessage());
+    }
 }
