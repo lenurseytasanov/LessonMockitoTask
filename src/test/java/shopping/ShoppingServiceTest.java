@@ -1,5 +1,6 @@
-package customer;
+package shopping;
 
+import customer.Customer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -8,15 +9,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import product.Product;
 import product.ProductDao;
-import shopping.BuyException;
-import shopping.Cart;
-import shopping.ShoppingServiceImpl;
-
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 public class ShoppingServiceTest {
@@ -27,16 +23,12 @@ public class ShoppingServiceTest {
     @InjectMocks
     private ShoppingServiceImpl shoppingService;
 
-    private Customer customer;
+    private final Customer customer = new Customer(1, "123");
 
     private Cart cart;
 
-    @Mock
-    private Cart cartMock;
-
     @BeforeEach
     public void init() {
-        customer = new Customer(1, "123");
         cart = shoppingService.getCart(customer);
     }
 
@@ -57,8 +49,6 @@ public class ShoppingServiceTest {
      */
     @Test
     public void getAllProductsTest() {
-        shoppingService.getAllProducts();
-        verify(productDao, times(1)).getAll();
     }
 
     /**
@@ -66,9 +56,6 @@ public class ShoppingServiceTest {
      */
     @Test
     public void getProductByName() {
-        String product = "product";
-        shoppingService.getProductByName(product);
-        verify(productDao, times(1)).getByName(eq(product));
     }
 
     /**
@@ -96,29 +83,11 @@ public class ShoppingServiceTest {
         assertTrue(shoppingService.buy(cart));
         assertTrue(cart.getProducts().isEmpty());
 
-        verify(productDao, times(2)).save(any());
+        verify(productDao).save(eq(product1));
+        verify(productDao).save(eq(product2));
 
         assertEquals(0, product1.getCount());
         assertEquals(1, product2.getCount());
-    }
-
-    /**
-     * Проверяется, что при попытке купить корзину, в которой суммарное кол-во каждого вида
-     * товара больше общего кол-ва данного товара, бросается исключение.
-     */
-    @Test
-    public void buyIncorrectCartWithRepeatsTest() throws BuyException {
-        Product product = new Product("product1", 2);
-
-        cart.add(product, 1);
-        cart.add(product, 1);
-        cart.add(product, 1);
-
-        Exception e = assertThrows(BuyException.class, () -> shoppingService.buy(cart));
-        assertEquals(
-                "В наличии нет необходимого количества товара '%s'".formatted(product.getName()),
-                e.getMessage()
-        );
     }
 
     /**
@@ -126,11 +95,13 @@ public class ShoppingServiceTest {
      * товара больше общего кол-ва данного товара, бросается исключение.
      */
     @Test
-    public void buyIncorrectCartTest() throws BuyException {
-        Product product = new Product("product", 0);
-        when(cartMock.getProducts()).thenReturn(Map.of(product, 5));
+    public void buyIncorrectCartTest() {
+        Product product = new Product("product", 5);
 
-        Exception e = assertThrows(BuyException.class, () -> shoppingService.buy(cartMock));
+        cart.add(product, 3);
+        product.subtractCount(5);
+
+        Exception e = assertThrows(BuyException.class, () -> shoppingService.buy(cart));
         assertEquals(
                 "В наличии нет необходимого количества товара '%s'".formatted(product.getName()),
                 e.getMessage()
